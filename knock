@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+import sys
+import argparse
+import time
+import socket
+import select
+
+
+class Knocker(object):
+    def __init__(self, args: list):
+        self._parse_args(args)
+
+    def _parse_args(self, args: list):
+        description_text = 'Simple port-knocking client written in python3. See more at {}' \
+            .format('https://github.com/grongor/knock')
+        parser = argparse.ArgumentParser(description=description_text)
+
+        help_text = 'How many milliseconds to wait on hanging connection. Default is 200 ms.'
+        parser.add_argument('-t', '--timeout', type=int, default=200, help=help_text)
+
+        help_text = 'How many milliseconds to wait between each knock. Default is 200 ms.'
+        parser.add_argument('-d', '--delay', type=int, default=200, help=help_text)
+
+        parser.add_argument('-u', '--udp', help='Use UDP instead of TCP.', action='store_true')
+        parser.add_argument('host', help='Hostname or IP address of the host to knock on. Supports IPv6.')
+        parser.add_argument('ports', metavar='port', nargs='+', type=int, help='Port(s) to knock on.')
+
+        args = parser.parse_args(args)
+        self.timeout = args.timeout / 1000
+        self.delay = args.delay / 1000
+        self.use_udp = args.udp
+        self.host = args.host
+        self.is_ipv6 = args.host.find(':') != -1
+        self.ports = args.ports
+
+    def knock(self):
+        last_index = len(self.ports) - 1
+        for i, port in enumerate(self.ports):
+            s = socket.socket(
+                socket.AF_INET6 if self.is_ipv6 else socket.AF_INET,
+                socket.SOCK_DGRAM if self.use_udp else socket.SOCK_STREAM
+            )
+            s.setblocking(False)
+            s.connect_ex((self.host, port))
+            select.select([s], [s], [s], self.timeout)
+            s.close()
+
+            if self.delay and i != last_index:
+                time.sleep(self.delay)
+
+
+if __name__ == '__main__':
+    Knocker(sys.argv[1:]).knock()
