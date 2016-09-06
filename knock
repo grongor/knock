@@ -44,6 +44,9 @@ class Knocker(object):
             s.setblocking(False)
             s.connect_ex((self.host, port))
             select.select([s], [s], [s], self.timeout)
+            if self.use_udp:
+                s.send(b'')
+
             s.close()
 
             if self.delay and i != last_index:
