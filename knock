@@ -30,22 +30,32 @@ class Knocker(object):
         self.timeout = args.timeout / 1000
         self.delay = args.delay / 1000
         self.use_udp = args.udp
-        self.host = args.host
-        self.is_ipv6 = args.host.find(':') != -1
         self.ports = args.ports
+
+        self.address_family, self.socket_type, _, _, socket_address = socket.getaddrinfo(
+                host=args.host,
+                port=None,
+                type=socket.SOCK_DGRAM if self.use_udp else socket.SOCK_STREAM,
+                flags=socket.AI_ADDRCONFIG
+            )[0]
+
+        self.socket_address = list(socket_address)
 
     def knock(self):
         last_index = len(self.ports) - 1
         for i, port in enumerate(self.ports):
-            s = socket.socket(
-                socket.AF_INET6 if self.is_ipv6 else socket.AF_INET,
-                socket.SOCK_DGRAM if self.use_udp else socket.SOCK_STREAM
-            )
+            socket_address = self.socket_address
+            socket_address[1] = port
+            socket_address = tuple(socket_address)
+
+            s = socket.socket(self.address_family, self.socket_type)
             s.setblocking(False)
-            s.connect_ex((self.host, port))
-            select.select([s], [s], [s], self.timeout)
+
             if self.use_udp:
-                s.send(b'')
+                s.sendto(b'', socket_address)
+            else:
+                s.connect_ex(socket_address)
+                select.select([s], [s], [s], self.timeout)
 
             s.close()
 
