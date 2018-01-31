@@ -22,36 +22,42 @@ class Knocker(object):
         help_text = 'How many milliseconds to wait between each knock. Default is 200 ms.'
         parser.add_argument('-d', '--delay', type=int, default=200, help=help_text)
 
-        parser.add_argument('-u', '--udp', help='Use UDP instead of TCP.', action='store_true')
+        parser.add_argument('-u', '--udp', help='Use UDP instead of TCP by default.', action='store_true')
         parser.add_argument('host', help='Hostname or IP address of the host to knock on. Supports IPv6.')
-        parser.add_argument('ports', metavar='port', nargs='+', type=int, help='Port(s) to knock on.')
+        parser.add_argument('ports', metavar='port[:protocol]', nargs='+',
+                            help='Port(s) to knock on, protocol (tcp, udp) is optional.')
 
         args = parser.parse_args(args)
         self.timeout = args.timeout / 1000
         self.delay = args.delay / 1000
-        self.use_udp = args.udp
+        self.default_udp = args.udp
         self.ports = args.ports
 
-        self.address_family, self.socket_type, _, _, socket_address = socket.getaddrinfo(
+        self.address_family, _, _, _, (self.ip_address, _) = socket.getaddrinfo(
                 host=args.host,
                 port=None,
-                type=socket.SOCK_DGRAM if self.use_udp else socket.SOCK_STREAM,
                 flags=socket.AI_ADDRCONFIG
             )[0]
-
-        self.socket_address = list(socket_address)
 
     def knock(self):
         last_index = len(self.ports) - 1
         for i, port in enumerate(self.ports):
-            socket_address = self.socket_address
-            socket_address[1] = port
-            socket_address = tuple(socket_address)
+            use_udp = self.default_udp
+            if port.find(':') != -1:
+                port, protocol = port.split(':', 2)
+                if protocol == 'tcp':
+                    use_udp = False
+                elif protocol == 'udp':
+                    use_udp = True
+                else:
+                    error = 'Invalid protocol "{}" given. Allowed values are "tcp" and "udp".'
+                    raise ValueError(error.format(protocol))
 
-            s = socket.socket(self.address_family, self.socket_type)
+            s = socket.socket(self.address_family, socket.SOCK_DGRAM if use_udp else socket.SOCK_STREAM)
             s.setblocking(False)
 
-            if self.use_udp:
+            socket_address = (self.ip_address, int(port))
+            if use_udp:
                 s.sendto(b'', socket_address)
             else:
                 s.connect_ex(socket_address)
