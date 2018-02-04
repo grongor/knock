@@ -12,16 +12,13 @@ class Knocker(object):
         self._parse_args(args)
 
     def _parse_args(self, args: list):
-        description_text = 'Simple port-knocking client written in python3. See more at {}' \
-            .format('https://github.com/grongor/knock')
-        parser = argparse.ArgumentParser(description=description_text)
+        parser = argparse.ArgumentParser(description='Simple port-knocking client written in python3. '
+                                                     'See more at https://github.com/grongor/knock')
 
-        help_text = 'How many milliseconds to wait on hanging connection. Default is 200 ms.'
-        parser.add_argument('-t', '--timeout', type=int, default=200, help=help_text)
-
-        help_text = 'How many milliseconds to wait between each knock. Default is 200 ms.'
-        parser.add_argument('-d', '--delay', type=int, default=200, help=help_text)
-
+        parser.add_argument('-t', '--timeout', type=int, default=200,
+                            help='How many milliseconds to wait on hanging connection. Default is 200 ms.')
+        parser.add_argument('-d', '--delay', type=int, default=200,
+                            help='How many milliseconds to wait between each knock. Default is 200 ms.')
         parser.add_argument('-u', '--udp', help='Use UDP instead of TCP by default.', action='store_true')
         parser.add_argument('host', help='Hostname or IP address of the host to knock on. Supports IPv6.')
         parser.add_argument('ports', metavar='port[:protocol]', nargs='+',
